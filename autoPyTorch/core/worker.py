@@ -62,6 +62,8 @@ class AutoNetWorker(Worker):
 
         start_time = time.time()
         self.autonet_logger.debug("Starting optimization!")
+        # if self.logger:
+        #     self.logger.debug("Starting optimization!")
 
         # guarantee time and memory limits using pynisher
         if self.guarantee_limits:
@@ -96,6 +98,8 @@ class AutoNetWorker(Worker):
         network_name = [v for k, v in config.items() if k.endswith('network')] or "None"
 
         self.autonet_logger.info("Training " + str(network_name) + " with budget " + str(budget) + " resulted in optimize-metric-loss: " + str(loss) + " took " + str((time.time()-start_time)) + " seconds")
+        # if self.logger:
+        #     self.logger.debug("Training " + str(network_name) + " with budget " + str(budget) + " resulted in optimize-metric-loss: " + str(loss) + " took " + str((time.time()-start_time)) + " seconds")
 
         return  result
     
@@ -113,6 +117,8 @@ class AutoNetWorker(Worker):
         """
         try:
             self.autonet_logger.info("Fit optimization pipeline")
+            # if self.logger:
+            #     self.logger.debug("Fit optimization pipeline")
             return self.pipeline.fit_pipeline(hyperparameter_config=config, pipeline_config=self.pipeline_config, 
                                             X_train=self.X_train, Y_train=self.Y_train, X_valid=self.X_valid, Y_valid=self.Y_valid, 
                                             budget=budget, budget_type=self.budget_type, max_budget=self.max_budget, optimize_start_time=optimize_start_time,
@@ -127,6 +133,8 @@ class AutoNetWorker(Worker):
     @Pyro4.expose
     @Pyro4.oneway
     def shutdown(self):
+        # if self.logger:
+        #     self.logger.debug("Shutting down.")
         for s in self.shutdownables:
             s.shutdown()
         super().shutdown()

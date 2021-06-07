@@ -114,13 +114,36 @@ class OptimizationAlgorithm(SubPipelineNode):
 
             # start nameserver if not on cluster or on master node in cluster
             if task_id in [1, -1]:
+                # timestamp = time.strftime('%c')
+                # with open(f"master_{task_id}_touch_{timestamp}", "w") as fp:
+                #     fp.write("")
                 NS = self.get_nameserver(run_id, task_id, ns_credentials_dir, network_interface_name)
                 ns_host, ns_port = NS.start()
                 
             if task_id != 1 or pipeline_config["run_worker_on_master_node"]:
+                # timestamp = time.strftime('%c')
+                # with open(f"worker_{task_id}_touch_{timestamp}", "w") as fp:
+                #     fp.write(f"task_id: {task_id}\tWorker flag: {pipeline_config['run_worker_on_master_node']}")
+                file_logger = logging.getLogger("custom_worker_logger")
+                file_logger.setLevel(logging.DEBUG)
+                # logfile = os.path.join(pipeline_config["result_logger_dir"], f"worker{task_id}.log")
+                # ch = logging.FileHandler(logfile)
+                # ch.setFormatter(
+                #     logging.Formatter('%(levelname)s %(asctime)s - %(relativeCreated)6d - %(threadName)s: %(message)s'))
+                # ch.setLevel(logging.DEBUG)
+                # file_logger.addHandler(ch)
+                # file_logger.debug(f"Initializing.")
                 self.run_worker(pipeline_config=pipeline_config, run_id=run_id, task_id=task_id, ns_credentials_dir=ns_credentials_dir,
                     network_interface_name=network_interface_name, X_train=X_train, Y_train=Y_train, X_valid=X_valid, Y_valid=Y_valid,
                     dataset_info=dataset_info, shutdownables=shutdownables)
+
+            # logger.setLevel(logging.DEBUG)
+            # logfile = os.path.join(pipeline_config["result_logger_dir"], f"master{task_id}.log")
+            # ch = logging.FileHandler(logfile)
+            # ch.setFormatter(
+            #     logging.Formatter('%(levelname)s %(asctime)s - %(relativeCreated)6d - %(threadName)s: %(message)s'))
+            # ch.setLevel(logging.DEBUG)
+            # logger.addHandler(ch)
 
             # start BOHB if not on cluster or on master node in cluster
             res = None
@@ -329,7 +352,7 @@ class OptimizationAlgorithm(SubPipelineNode):
 
 
     def run_worker(self, pipeline_config, run_id, task_id, ns_credentials_dir, network_interface_name,
-            X_train, Y_train, X_valid, Y_valid, dataset_info, shutdownables):
+            X_train, Y_train, X_valid, Y_valid, dataset_info, shutdownables, logger=None):
         """ Run the AutoNetWorker
         
         Arguments:
@@ -348,6 +371,8 @@ class OptimizationAlgorithm(SubPipelineNode):
         if not task_id == -1:
             time.sleep(5)
         while not os.path.isdir(ns_credentials_dir):
+            # if logger:
+            #    logger.debug("Worker process sleeping to wait for NIC Credentials Directory.")
             time.sleep(5)
         host = nic_name_to_host(network_interface_name)
         
@@ -357,7 +382,7 @@ class OptimizationAlgorithm(SubPipelineNode):
                               max_budget=pipeline_config["max_budget"],
                               host=host, run_id=run_id,
                               id=task_id, shutdownables=shutdownables,
-                              use_pynisher=pipeline_config["use_pynisher"])
+                              use_pynisher=pipeline_config["use_pynisher"], logger=logger)
         worker.load_nameserver_credentials(ns_credentials_dir)
         # run in background if not on cluster
         worker.run(background=(task_id <= 1))
@@ -392,6 +417,7 @@ class OptimizationAlgorithm(SubPipelineNode):
 
         # start algorithm
         min_num_workers = pipeline_config["min_workers"] if task_id != -1 else 1
+        # logger.info("[Master] Set minimum number of workers to %s", str(min_num_workers))
 
         reduce_runtime = pipeline_config["max_budget"] if pipeline_config["budget_type"] == "time" else 0
         HB.run_until(runtime=(pipeline_config["max_runtime"] - reduce_runtime),
